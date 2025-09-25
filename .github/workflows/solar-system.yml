@@ -1,4 +1,5 @@
-name: Solar System Workflow
+name: Sistema Solar Workflow
+##nombre del espacio de trabajo
 
 on: 
   workflow_dispatch:
