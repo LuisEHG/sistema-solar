@@ -110,19 +110,34 @@ jobs:
                 // Si no hay datos, crear algunos de ejemplo
                 if (count === 0) {
                   const samplePlanets = [
-                    { name: 'Mercurio', distance: 57.9, diameter: 4879, moons: 0 },
+                    { name: 'Mercury', distance: 57.9, diameter: 4879, moons: 0 },
                     { name: 'Venus', distance: 108.2, diameter: 12104, moons: 0 },
-                    { name: 'Tierra', distance: 149.6, diameter: 12756, moons: 1 },
-                    { name: 'Marte', distance: 227.9, diameter: 6792, moons: 2 }
+                    { name: 'Earth', distance: 149.6, diameter: 12756, moons: 1 },
+                    { name: 'Mars', distance: 227.9, diameter: 6792, moons: 2 },
+                    { name: 'Jupiter', distance: 778.5, diameter: 142984, moons: 79 },
+                    { name: 'Saturn', distance: 1432.0, diameter: 120536, moons: 82 },
+                    { name: 'Uranus', distance: 2867.0, diameter: 51118, moons: 27 },
+                    { name: 'Neptune', distance: 4515.0, diameter: 49528, moons: 14 }
                   ];
                   
                   await Planet.insertMany(samplePlanets);
-                  console.log('✅ Datos de ejemplo del sistema solar insertados');
+                  console.log('✅ Datos de planetas en inglés insertados');
                   
                   const finalCount = await Planet.countDocuments();
                   console.log(\`📊 Total de planetas insertados: \${finalCount}\`);
+                  
+                  // Mostrar los planetas insertados
+                  const planets = await Planet.find({}, 'name distance');
+                  console.log('🪐 Planetas en la base de datos:');
+                  planets.forEach(planet => console.log(\`  - \${planet.name}: \${planet.distance} UA\`));
+                  
                 } else {
                   console.log('✅ Base de datos ya contiene datos');
+                  
+                  // Mostrar los planetas existentes
+                  const planets = await Planet.find({}, 'name distance');
+                  console.log('🪐 Planetas existentes en la base de datos:');
+                  planets.forEach(planet => console.log(\`  - \${planet.name}: \${planet.distance} UA\`));
                 }
                 
                 await mongoose.connection.close();
