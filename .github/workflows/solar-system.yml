@@ -1,4 +1,5 @@
 name: Sistema Solar Workflow
+##nombre del espacio de trabajo
 
 on: 
   workflow_dispatch:
@@ -6,43 +7,32 @@ on:
     branches:
       - main
       - 'feature/*'
-
 env:
   MONGO_URI: ${{ secrets.MONGO_URI }}
-
+  MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
+  MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+    
 jobs:
-  unit-testing:
-    name: Unit Testing
-    runs-on: ubuntu-latest
+    unit-testing:
+        name: Unit Testing
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v4
 
-    steps:
-      # 1️⃣ Clonar el repositorio
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      # 2️⃣ Instalar Node.js
-      - name: Setup NodeJS Version
-        uses: actions/setup-node@v4
-        with:
-          node-version: 18
-
-      # 3️⃣ Instalar dependencias
-      - name: Install Dependencies
-        run: npm install
-
-      # 4️⃣ Verificar conexión MongoDB
-      - name: Test MongoDB Connection
-        run: |
-          node -e "require('mongoose').connect(process.env.MONGO_URI, {useNewUrlParser:true, useUnifiedTopology:true}).then(()=>{console.log('MongoDB Connection OK'); process.exit(0)}).catch(err=>{console.error(err); process.exit(1)})"
-
-      # 5️⃣ Ejecutar tests con Mocha (aunque fallen, continuar)
-      - name: Run Unit Tests
-        run: |
-          npm test || echo "Tests finished with errors, see test-results.xml"
-
-      # 6️⃣ Subir resultados de tests
-      - name: Upload Test Results
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mocha-Test-Result
-          path: test-results.xml
+        - name: Setup NodeJS Version
+          uses: actions/setup-node@v4
+          with:
+            node-version: 18
+    
+        - name: Install Dependencies
+          run: npm install
+    
+        - name: Unit Testing
+          run: npm test
+          
+        - name: Archive Test Result
+          uses: actions/upload-artifact@v4
+          with:
+            name: Mocha-Test-Result
+            path: test-results.xml
