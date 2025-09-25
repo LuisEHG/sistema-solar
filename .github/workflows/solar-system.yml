@@ -14,7 +14,7 @@ env:
     
 jobs:
     unit-testing:
-        name: Unit Testing
+        name: Pruebas Unitarias
         runs-on: ubuntu-latest
         steps:
         - name: Checkout Repository
