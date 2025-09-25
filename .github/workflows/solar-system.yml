@@ -8,7 +8,7 @@ on:
       - main
       - 'feature/*'
 env:
-  MONGO_URI: 'mongodb+srv://luiseduardo:G3n3rica@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+  MONGO_URI: 'mongodb+srv://luiseduardo:G3n3rica@cluster0.hrpaoxp.mongodb.net/sistemasolar?retryWrites=true&w=majority&appName=Cluster0'
   MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
     
