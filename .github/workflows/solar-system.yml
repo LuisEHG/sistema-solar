@@ -52,8 +52,8 @@ jobs:
         - name: Install Dependencies
           run: npm install
     
-        - name: Unit Testing
-          run: npm test
+        - name: Check code Coverage
+          run: npm run coverage
         
         - name: Archive Test Result
           uses: actions/upload-artifact@v4
@@ -61,4 +61,3 @@ jobs:
             name: Code-Coverage-Resultado
             path: coverage
             retention-days: 5
-  
