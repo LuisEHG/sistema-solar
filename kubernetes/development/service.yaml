@@ -9,7 +9,7 @@ spec:
   selector:
     app: solar-system
   ports:
-    - protocol: TCP
-      port: 80          # Puerto que el Ingress usará
-      targetPort: 3000  # Puerto del contenedor
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
   type: ClusterIP
