@@ -10,15 +10,16 @@ spec:
   selector:
     matchLabels:
       app: solar-system
+  strategy: {}
   template:
     metadata:
       labels:
         app: solar-system
     spec:
       containers:
-      - name: solar-system
-        image: _{_IMAGE_}_
+      - image: _{_IMAGE_}_
         imagePullPolicy: Always
+        name: solar-system
         ports:
         - containerPort: 3000
           name: http
