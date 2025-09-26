@@ -95,6 +95,9 @@ jobs:
       
     dev-deploy:
         needs: docker
+        environment:
+          name: dev
+          url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
         outputs:
            APP_INGRESS_URL: ${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
         runs-on: ubuntu-latest
@@ -191,4 +194,4 @@ jobs:
               URL: ${{ needs.dev-deploy.outputs.APP_INGRESS_URL}}
             run: |
               echo "Verifying if URL is accessible: $URL"
-              curl --max-time 10 -I https://$URL/ || echo "URL not accessible - check ingress configuration"
+              curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
