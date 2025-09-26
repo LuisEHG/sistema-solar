@@ -17,7 +17,7 @@ spec:
           service:
             name: solar-system
             port:
-              number: 80
+              number: 3000
   tls:
   - hosts:
     - solar-system-_{_NAMESPACE_}_._{_INGRESS_IP_}_.nip.io
