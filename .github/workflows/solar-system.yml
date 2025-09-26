@@ -1,5 +1,8 @@
 name: Sistema Solar Workflow
 ##nombre del espacio de trabajo
+permissions:
+  id-token: write
+  contents: read
 
 on: 
   workflow_dispatch:
