@@ -94,11 +94,10 @@ jobs:
               cache-to: type=inline
       
     dev-deploy:
-        if: contains(github.ref, 'feature')
         needs: docker
-        environment:
-          name: dev
-          url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
+        # environment:
+          # name: dev
+          # url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
         outputs:
            APP_INGRESS_URL: ${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
         runs-on: ubuntu-latest
