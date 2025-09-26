@@ -147,12 +147,10 @@ jobs:
           - name: Create Mongo Secret
             run: |
               kubectl -n ${{ vars.NAMESPACE }} create secret generic mongo-db-creds \
-                --from-literal=MONGO_URI=${{ env.MONGO_URI }} \
-                --from-literal=MONGO_USERNAME=${{ vars.MONGO_USERNAME }} \
+                --from-literal=MONGO_URI="mongodb+srv://luiseduardo:${{ secrets.MONGO_PASSWORD }}@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" \
+                --from-literal=MONGO_USERNAME=luiseduardo \
                 --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
-                --save-config \
-                --dry-run=client \
-                -o yaml | kubectl apply -f -
+                --dry-run=client -o yaml | kubectl apply -f -
 
           - name: Check Manifest Files
             run: |
