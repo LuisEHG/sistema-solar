@@ -89,13 +89,12 @@ jobs:
               context: .
               push: true
               tags: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+              cache-from: type=registry,ref=luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+              cache-to: type=inline
       
     dev-deploy:
         needs: docker
         runs-on: ubuntu-latest
-        permissions:
-          id-token: write
-          contents: read
         steps:
           - name: Checkout Repo
             uses: actions/checkout@v4
@@ -108,9 +107,7 @@ jobs:
           - name: Azure login
             uses: azure/login@v2
             with:
-              client-id: ${{ secrets.AZURE_CLIENT_ID }}
-              tenant-id: ${{ secrets.AZURE_TENANT_ID }}
-              subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+              creds: ${{ secrets.AZURE_CREDENTIALS }}
 
           - name: Set AKS context
             uses: azure/aks-set-context@v4
@@ -121,40 +118,57 @@ jobs:
           - name: Informacion de Cluster Detalles
             run: |
               kubectl version --short
-              echo --------------------------------------
+              echo "--------------------------------------"
               kubectl get nodes
 
-          - name: Controller IP 
+          - name: Get Ingress IP
+            id: ingress
             run: |
-             INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
-             echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+              INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "192.168.1.100")
+              echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+              echo "Using INGRESS_IP: $INGRESS_IP"
 
-          - name: Replicas token en el manifiestos files
+          - name: Replace tokens in manifest files
             uses: cschleiden/replace-tokens@v1
             with:
               tokenPrefix: '_{_'
               tokenSuffix: '_}_'
               files: '["kubernetes/development/*.yaml"]'
             env:
-                NAMESPACE: ${{ vars.NAMESPACE }}
-                REPLICAS: ${{ vars.REPLICAS }}
-                IMAGE: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
-                INGRESS_IP: ${{ env.INGRESS_IP }}
+              NAMESPACE: ${{ vars.NAMESPACE }}
+              REPLICAS: ${{ vars.REPLICAS }}
+              IMAGE: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+              INGRESS_IP: ${{ env.INGRESS_IP }}
           
+          - name: Create or Update Namespace
+            run: |
+              kubectl create namespace ${{ vars.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
           - name: Create Mongo Secret
             run: |
               kubectl -n ${{ vars.NAMESPACE }} create secret generic mongo-db-creds \
-              --from-literal=MONGO_URI=${{ env.MONGO_URI }} \
-              --from-literal=MONGO_USERNAME=${{ vars.MONGO_USERNAME }} \
-              --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
-              --save-config \
-              --dry-run=client \
-              -o yaml | kubectl apply -f -
+                --from-literal=MONGO_URI=${{ env.MONGO_URI }} \
+                --from-literal=MONGO_USERNAME=${{ vars.MONGO_USERNAME }} \
+                --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
+                --save-config \
+                --dry-run=client \
+                -o yaml | kubectl apply -f -
 
-          - name: Check Files
+          - name: Check Manifest Files
             run: |
-             cat kubernetes/development/*.yaml
+              echo "=== Checking manifest files ==="
+              ls -la kubernetes/development/
+              cat kubernetes/development/*.yaml
              
           - name: Deploy to AKS
             run: |
-              kubectl apply -f kubernetes/development/
+              kubectl apply -f kubernetes/development/ -n ${{ vars.NAMESPACE }}
+
+          - name: Verify Deployment
+            run: |
+              echo "=== Deployment status ==="
+              kubectl get deployments -n ${{ vars.NAMESPACE }}
+              echo "=== Pods status ==="
+              kubectl get pods -n ${{ vars.NAMESPACE }}
+              echo "=== Services status ==="
+              kubectl get services -n ${{ vars.NAMESPACE }}
