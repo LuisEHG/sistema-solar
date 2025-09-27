@@ -93,6 +93,7 @@ jobs:
               cache-to: type=inline
       
     dev-deploy:
+        if: contains(github.ref, 'feature/') 
         needs: docker
         environment:
           name: dev
@@ -184,6 +185,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
     dev-integracion-testing:
+        if: contains(github.ref, 'feature/') 
         name: Dev Integration Testing
         needs: dev-deploy
         runs-on: ubuntu-latest
@@ -196,7 +198,8 @@ jobs:
               curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
     
     prod-deploy:
-        needs: dev-integracion-testing
+        if: github.ref == 'refs/heads/main' 
+        needs: docker
         environment:
           name: production
           url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
@@ -287,6 +290,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
     prod-integracion-testing:
+        if: github.ref == 'refs/heads/main'
         name: Prod Integration Testing
         needs: prod-deploy
         runs-on: ubuntu-latest
