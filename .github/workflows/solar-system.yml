@@ -198,7 +198,7 @@ jobs:
               curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
     
     prod-deploy:
-        if: github.ref == 'refs/heads/main' 
+        if: github.ref == 'refs/heads/master' 
         needs: docker
         environment:
           name: production
@@ -290,7 +290,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
     prod-integracion-testing:
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/master'
         name: Prod Integration Testing
         needs: prod-deploy
         runs-on: ubuntu-latest
