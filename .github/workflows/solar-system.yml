@@ -30,7 +30,7 @@ jobs:
             path: node_modules
             key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json')}}
 
-        - name: Install Dependencies
+        - name: Instalacion de dependecias
           run: npm install
     
         - name: Unit Testing
@@ -164,7 +164,7 @@ jobs:
               ls -la kubernetes/development/
               cat kubernetes/development/*.yaml
              
-          - name: Deploy to AKS
+          - name: Deploy to AKS 
             run: |
               kubectl apply -f kubernetes/development/ -n ${{ vars.NAMESPACE }}
 
