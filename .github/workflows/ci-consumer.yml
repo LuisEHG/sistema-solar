@@ -7,8 +7,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  call-ci-base:
-    uses: your-org/ci-templates/.github/workflows/ci-base.yml@main
+  ci-base:
+    uses: ./.github/workflows/ci-base.yml
     with:
       node-version: "18"
       image-name: "luisrg3citperuacr001.azurecr.io/sistemasolar"

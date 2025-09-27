@@ -5,9 +5,8 @@ on:
   workflow_call:
     inputs:
       node-version:
-        required: false
+        required: true
         type: string
-        default: "18"
       image-name:
         required: true
         type: string
@@ -15,28 +14,23 @@ on:
         required: true
         type: string
       manifests-path:
-        required: false
+        required: true
         type: string
-        default: "kubernetes/development"
       deploy-via-argocd:
         required: false
         type: boolean
-        default: true
-      run-tests:
-        required: false
-        type: boolean
-        default: true
     secrets:
       AZURE_CREDENTIALS:
         required: true
       MANIFESTS_REPO_TOKEN:
         required: true
       ARGOCD_SERVER:
-        required: false
+        required: true
       ARGOCD_USERNAME:
-        required: false
+        required: true
       ARGOCD_PASSWORD:
-        required: false
+        required: true
+
 
 jobs:
   setup:
