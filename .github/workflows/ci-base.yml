@@ -1,4 +1,3 @@
-# .github/workflows/ci-base.yml
 name: "CI Base - Reusable"
 
 on:
@@ -19,6 +18,10 @@ on:
       deploy-via-argocd:
         required: false
         type: boolean
+      run-tests:       # 👈 nuevo input opcional
+        required: false
+        type: boolean
+        default: true
     secrets:
       AZURE_CREDENTIALS:
         required: true
@@ -30,7 +33,6 @@ on:
         required: true
       ARGOCD_PASSWORD:
         required: true
-
 
 jobs:
   setup:
@@ -94,60 +96,54 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ needs.setup.outputs.IMAGE_REF }}
+          tags: ${{ needs.setup.outputs.image_ref }}
           cache-from: type=registry,ref=${{ inputs.image-name }}:latest
           cache-to: type=inline
-      - name: Set IMAGE_REF output
-        id: out
-        run: echo "IMAGE_REF=${{ needs.setup.outputs.IMAGE_REF }}" >> $GITHUB_OUTPUT
 
   security_scan:
-     needs: build_and_push
-     runs-on: ubuntu-latest
-     steps:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    steps:
       - uses: actions/checkout@v4
-
       - name: Run org/security scan (componente reusable)
         uses: ./.github/actions/security-scan
         with:
           image-ref: ${{ needs.setup.outputs.image_ref }}
           target-url: ${{ inputs.target-url || '' }}   # opcional para DAST
-        env:
-          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
   update_manifests_and_argocd:
     needs: [build_and_push, security_scan]
     runs-on: ubuntu-latest
     if: ${{ inputs.deploy-via-argocd == true }}
     steps:
-    - name: Checkout manifests repo
-      uses: actions/checkout@v4
-      with:
-        repository: ${{ inputs.manifests-repo }}
-        token: ${{ secrets.MANIFESTS_REPO_TOKEN }}
-        path: manifests
+      - name: Checkout manifests repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.manifests-repo }}
+          token: ${{ secrets.MANIFESTS_REPO_TOKEN }}
+          path: manifests
 
-    - name: Replace image tag in manifests
-      run: |
-        find manifests/${{ inputs.manifests-path }} -type f -name "*.yaml" -exec sed -i "s|REPLACE_IMAGE_TAG|${{ needs.setup.outputs.IMAGE_REF }}|g" {} \;
-        cd manifests
-        git config user.name "github-actions"
-        git config user.email "actions@github.com"
-        git add .
-        if git diff --staged --quiet; then
-          echo "No changes to commit"
-        else
-          git commit -m "ci: update image to ${{ needs.setup.outputs.IMAGE_REF }}"
-          git push origin HEAD:main
-        fi
+      - name: Replace image tag in manifests
+        run: |
+          find manifests/${{ inputs.manifests-path }} -type f -name "*.yaml" -exec sed -i "s|REPLACE_IMAGE_TAG|${{ needs.setup.outputs.image_ref }}|g" {} \;
+          cd manifests
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "ci: update image to ${{ needs.setup.outputs.image_ref }}"
+            git push origin HEAD:main
+          fi
 
-    - name: ArgoCD sync
-      run: |
-        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-        chmod +x /usr/local/bin/argocd
-        argocd login ${{ secrets.ARGOCD_SERVER }} \
-          --username ${{ secrets.ARGOCD_USERNAME }} \
-          --password ${{ secrets.ARGOCD_PASSWORD }} \
-          --insecure
-        argocd app sync sistemasolar --grpc-web
-        argocd app wait sistemasolar --timeout 300 --health
+      - name: ArgoCD sync
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+          argocd login ${{ secrets.ARGOCD_SERVER }} \
+            --username ${{ secrets.ARGOCD_USERNAME }} \
+            --password ${{ secrets.ARGOCD_PASSWORD }} \
+            --insecure
+          argocd app sync sistemasolar --grpc-web
+          argocd app wait sistemasolar --timeout 300 --health
