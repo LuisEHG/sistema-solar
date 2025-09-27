@@ -30,7 +30,7 @@ jobs:
             path: node_modules
             key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json')}}
 
-        - name: Instalacion de dependecias
+        - name: Install Dependencies
           run: npm install
     
         - name: Unit Testing
@@ -289,9 +289,9 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
-    prod-integracion-testing:
-        if: github.ref == 'refs/heads/master'
+    prod-integration-testing:
         name: Prod Integration Testing
+        if: github.ref == 'refs/heads/master'
         needs: prod-deploy
         runs-on: ubuntu-latest
         steps:
