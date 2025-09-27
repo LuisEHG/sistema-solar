@@ -290,7 +290,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
     prod-integration-testing:
-        name: Prod Integration Testing
+        name: Production Integration Testing
         if: github.ref == 'refs/heads/master'
         needs: prod-deploy
         runs-on: ubuntu-latest
