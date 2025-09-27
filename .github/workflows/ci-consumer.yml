@@ -14,7 +14,8 @@ jobs:
       image-name: "luisrg3citperuacr001.azurecr.io/sistemasolar"
       manifests-repo: "your-org/sistemasolar-manifests"
       manifests-path: "kubernetes/development"
-      deploy-via-argocd: true   # este activa el deploy
+      deploy-via-argocd: true
+      run-tests: true   # este activa el deploy
     secrets:
       AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
       MANIFESTS_REPO_TOKEN: ${{ secrets.MANIFESTS_REPO_TOKEN }}
