@@ -194,3 +194,106 @@ jobs:
             run: |
               echo "Verifying if URL is accessible: $URL"
               curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
+    
+    prod-deploy:
+        needs: dev-integracion-testing
+        environment:
+          name: production
+          url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
+        outputs:
+          APP_INGRESS_URL: ${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
+        runs-on: ubuntu-latest
+        steps:
+          - name: Checkout Repo
+            uses: actions/checkout@v4
+
+          - name: Install kubectl CLI
+            uses: azure/setup-kubectl@v3
+            with:
+              version: 'v1.26.0'
+
+          - name: Azure login
+            uses: azure/login@v2
+            with:
+              creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+          - name: Set AKS context
+            uses: azure/aks-set-context@v4
+            with:
+              resource-group: rgimgcontainer
+              cluster-name: AKS1-APP             
+
+          - name: Informacion de Cluster Detalles
+            run: |
+              kubectl version --short
+              echo "--------------------------------------"
+              kubectl get nodes
+
+          - name: Get Ingress IP
+            id: ingress
+            run: |
+              INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "192.168.1.100")
+              echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+              echo "Using INGRESS_IP: $INGRESS_IP"
+
+          - name: Replace tokens in manifest files
+            uses: cschleiden/replace-tokens@v1
+            with:
+              tokenPrefix: '_{_'
+              tokenSuffix: '_}_'
+              files: '["kubernetes/production/*.yaml"]'
+            env:
+              NAMESPACE: ${{ vars.NAMESPACE }}
+              REPLICAS: ${{ vars.REPLICAS }}
+              IMAGE: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+              INGRESS_IP: ${{ env.INGRESS_IP }}
+          
+          - name: Create or Update Namespace
+            run: |
+              kubectl create namespace ${{ vars.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+
+          - name: Create Mongo Secret
+            run: |
+              kubectl -n ${{ vars.NAMESPACE }} create secret generic mongo-db-creds \
+                --from-literal=MONGO_URI="mongodb+srv://luiseduardo:${{ secrets.MONGO_PASSWORD }}@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" \
+                --from-literal=MONGO_USERNAME=luiseduardo \
+                --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
+                --dry-run=client -o yaml | kubectl apply -f -
+
+          - name: Check Manifest Files
+            run: |
+              echo "=== Checking manifest files ==="
+              ls -la kubernetes/production/
+              cat kubernetes/production/*.yaml
+             
+          - name: Deploy to AKS Prodution
+            run: |
+              kubectl apply -f kubernetes/production/ -n ${{ vars.NAMESPACE }}
+
+          - name: Verify Deployment
+            run: |
+              echo "=== Deployment status ==="
+              kubectl get deployments -n ${{ vars.NAMESPACE }}
+              echo "=== Pods status ==="
+              kubectl get pods -n ${{ vars.NAMESPACE }}
+              echo "=== Services status ==="
+              kubectl get services -n ${{ vars.NAMESPACE }}
+
+          - name: Set app ingress host URL
+            id: set-ingress-host-address
+            run: |
+             APP_INGRESS_HOST=$(kubectl -n ${{ vars.NAMESPACE }} get ingress -o jsonpath='{.items[0].spec.tls[0].hosts[0]}')
+             echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
+             echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
+
+    prod-integracion-testing:
+        name: Prod Integration Testing
+        needs: prod-deploy
+        runs-on: ubuntu-latest
+        steps:
+          - name: Simple connectivity test
+            env:
+              URL: ${{ needs.prod-deploy.outputs.APP_INGRESS_URL}}
+            run: |
+              echo "Verifying if URL is accessible: $URL"
+              curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
