@@ -289,8 +289,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
-    prod-integracion-testing:
-        if: github.ref == 'refs/heads/master'
+    prod-integration-testing:
         name: Prod Integration Testing
         needs: prod-deploy
         runs-on: ubuntu-latest
