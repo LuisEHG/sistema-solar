@@ -1,0 +1,68 @@
+# .github/actions/security-scan/action.yml
+name: "security-scan"
+description: "Componente reusable SAST + SCA + DAST (CodeQL, npm audit, Trivy, ZAP)"
+inputs:
+  image-ref:
+    description: "Imagen para escanear (ej: myacr.azurecr.io/app:sha)"
+    required: true
+  target-url:
+    description: "URL objetivo para DAST (opcional)"
+    required: false
+runs:
+  using: "composite"
+  steps:
+    - name: Checkout repo
+      uses: actions/checkout@v4
+
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: SCA - npm audit (report)
+      run: |
+        npm ci
+        npm audit --json > npm-audit.json || true
+      shell: bash
+
+    - name: Upload npm audit
+      uses: actions/upload-artifact@v4
+      with:
+        name: npm-audit
+        path: npm-audit.json
+
+    - name: SAST - Init CodeQL
+      uses: github/codeql-action/init@v3
+      with:
+        languages: javascript
+
+    - name: SAST - Run CodeQL
+      uses: github/codeql-action/analyze@v3
+
+    - name: Trivy - Scan container image (all severities -> JSON)
+      uses: aquasecurity/trivy-action@v0.12.0
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        format: json
+        output: trivy-image-results.json
+        exit-code: '0'    # no hacer fail por defecto; dejar política en caller
+
+    - name: Upload Trivy results
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-results
+        path: trivy-image-results.json
+
+    - name: DAST (OWASP ZAP) - run if target-url provided
+      if: ${{ inputs.target-url != '' }}
+      run: |
+        chmod +x .github/actions/security-scan/scripts/run-zap.sh
+        .github/actions/security-scan/scripts/run-zap.sh "${{ inputs.target-url }}"
+      shell: bash
+
+    - name: Upload ZAP results (if exist)
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: zap-results
+        path: zap_report.html || true

@@ -1,0 +1,156 @@
+# .github/workflows/ci-base.yml
+name: "CI Base - Reusable"
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        required: false
+        type: string
+        default: "18"
+      image-name:
+        required: true
+        type: string
+      manifests-repo:
+        required: true
+        type: string
+      manifests-path:
+        required: false
+        type: string
+        default: "kubernetes/development"
+      deploy-via-argocd:
+        required: false
+        type: boolean
+        default: true
+      run-tests:
+        required: false
+        type: boolean
+        default: true
+    secrets:
+      AZURE_CREDENTIALS:
+        required: true
+      MANIFESTS_REPO_TOKEN:
+        required: true
+      ARGOCD_SERVER:
+        required: false
+      ARGOCD_USERNAME:
+        required: false
+      ARGOCD_PASSWORD:
+        required: false
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ steps.set_image_ref.outputs.IMAGE_REF }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set image ref
+        id: set_image_ref
+        run: |
+          echo "IMAGE_REF=${{ inputs.image-name }}:${{ github.sha }}" >> $GITHUB_OUTPUT
+
+  tests_and_coverage:
+    needs: setup
+    runs-on: ubuntu-latest
+    if: ${{ inputs.run-tests == true }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ inputs.node-version }}
+      - name: Install deps
+        run: npm ci
+      - name: Run unit tests (JUnit)
+        run: |
+          npm test -- --reporter mocha-junit-reporter --reporter-options mochaFile=test-results.xml || true
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results.xml
+      - name: Run Coverage
+        continue-on-error: true
+        run: npm run coverage || true
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage
+
+  build_and_push:
+    needs: [setup, tests_and_coverage]
+    runs-on: ubuntu-latest
+    outputs:
+      image_ref: ${{ needs.setup.outputs.image_ref }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Login to ACR
+        run: |
+          az acr login --name $(echo "${{ inputs.image-name }}" | cut -d'/' -f1)
+      - name: Build and push image (buildx)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ needs.setup.outputs.IMAGE_REF }}
+          cache-from: type=registry,ref=${{ inputs.image-name }}:latest
+          cache-to: type=inline
+      - name: Set IMAGE_REF output
+        id: out
+        run: echo "IMAGE_REF=${{ needs.setup.outputs.IMAGE_REF }}" >> $GITHUB_OUTPUT
+
+  security_scan:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    # Este job llama a la composite action security-scan definida en el repo (ver sección 2)
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run org/security scan (componente reusable)
+        uses: ./.github/actions/security-scan
+        with:
+          image-ref: ${{ needs.setup.outputs.IMAGE_REF }}
+          target-url: ${{ inputs.target-url || '' }}   # opcional para DAST
+        # proporciona secrets desde el workflow consumidor
+
+  update_manifests_and_argocd:
+    needs: [build_and_push, security_scan]
+    runs-on: ubuntu-latest
+    if: ${{ inputs.deploy-via-argocd == true }}
+    steps:
+      - name: Checkout manifests repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ inputs.manifests-repo }}
+          token: ${{ secrets.MANIFESTS_REPO_TOKEN }}
+          path: manifests
+
+      - name: Replace image tag in manifests
+        run: |
+          find manifests/${{ inputs.manifests-path }} -type f -name "*.yaml" -exec sed -i "s|REPLACE_IMAGE_TAG|${{ needs.setup.outputs.IMAGE_REF }}|g" {} \;
+          cd manifests
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add .
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "ci: update image to ${{ needs.setup.outputs.IMAGE_REF }}"
+            git push origin HEAD:main
+          fi
+
+      - name: ArgoCD sync (optional)
+        if: ${{ secrets.ARGOCD_SERVER != '' && secrets.ARGOCD_USERNAME != '' && secrets.ARGOCD_PASSWORD != '' }}
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+          argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USERNAME }} --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
+          argocd app sync sistemasolar --grpc-web
+          argocd app wait sistemasolar --timeout 300 --health

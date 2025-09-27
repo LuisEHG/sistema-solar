@@ -1,197 +1,197 @@
-name: Sistema Solar Workflow
+# name: Sistema Solar Workflow
 
-on: 
-  workflow_dispatch:
-  push:
-    branches:
-      - main
-      - 'feature/*'
+# on: 
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - main
+#       - 'feature/*'
 
-env:
-  MONGO_URI: 'mongodb+srv://luiseduardo:G3n3rica@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
-  MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
-  MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
+# env:
+#   MONGO_URI: 'mongodb+srv://luiseduardo:G3n3rica@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'
+#   MONGO_USERNAME: ${{ vars.MONGO_USERNAME }}
+#   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
 
-jobs:
-    unit-testing:
-        name: Pruebas Unitarias
-        runs-on: ubuntu-latest
-        steps:
-        - name: Checkout Repository
-          uses: actions/checkout@v4
+# jobs:
+#     unit-testing:
+#         name: Pruebas Unitarias
+#         runs-on: ubuntu-latest
+#         steps:
+#         - name: Checkout Repository
+#           uses: actions/checkout@v4
 
-        - name: Setup NodeJS Version
-          uses: actions/setup-node@v4
-          with:
-            node-version: 18
-        - name: Cache NPM dependencias
-          uses: actions/cache@v3
-          with:
-            path: node_modules
-            key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json')}}
+#         - name: Setup NodeJS Version
+#           uses: actions/setup-node@v4
+#           with:
+#             node-version: 18
+#         - name: Cache NPM dependencias
+#           uses: actions/cache@v3
+#           with:
+#             path: node_modules
+#             key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json')}}
 
-        - name: Install Dependencies
-          run: npm install
+#         - name: Install Dependencies
+#           run: npm install
     
-        - name: Unit Testing
-          run: npm test
+#         - name: Unit Testing
+#           run: npm test
         
-        - name: Archive Test Result
-          uses: actions/upload-artifact@v4
-          with:
-            name: Mocha-Test-Result
-            path: test-results.xml
+#         - name: Archive Test Result
+#           uses: actions/upload-artifact@v4
+#           with:
+#             name: Mocha-Test-Result
+#             path: test-results.xml
 
-    code-coverage:
-        needs: unit-testing
-        name: Code Coverage
-        runs-on: ubuntu-latest
-        steps:
-        - name: Checkout Repository
-          uses: actions/checkout@v4
+#     code-coverage:
+#         needs: unit-testing
+#         name: Code Coverage
+#         runs-on: ubuntu-latest
+#         steps:
+#         - name: Checkout Repository
+#           uses: actions/checkout@v4
 
-        - name: Setup NodeJS Version - 18
-          uses: actions/setup-node@v4
-          with:
-            node-version: 18
+#         - name: Setup NodeJS Version - 18
+#           uses: actions/setup-node@v4
+#           with:
+#             node-version: 18
     
-        - name: Install Dependencies
-          run: npm install
+#         - name: Install Dependencies
+#           run: npm install
     
-        - name: Check code Coverage
-          continue-on-error: true
-          run: npm run coverage
+#         - name: Check code Coverage
+#           continue-on-error: true
+#           run: npm run coverage
         
-        - name: Archive Test Result
-          uses: actions/upload-artifact@v4
-          with:
-            name: Code-Coverage-Resultado
-            path: coverage
-            retention-days: 5
+#         - name: Archive Test Result
+#           uses: actions/upload-artifact@v4
+#           with:
+#             name: Code-Coverage-Resultado
+#             path: coverage
+#             retention-days: 5
 
-    docker:
-        name: Container
-        needs: [unit-testing, code-coverage]
-        runs-on: ubuntu-latest
-        steps:
-          - name: Checkout
-            uses: actions/checkout@v4
+#     docker:
+#         name: Container
+#         needs: [unit-testing, code-coverage]
+#         runs-on: ubuntu-latest
+#         steps:
+#           - name: Checkout
+#             uses: actions/checkout@v4
 
-          - name: Login to ACR
-            uses: docker/login-action@v3
-            with:
-              registry: luisrg3citperuacr001.azurecr.io
-              username: ${{ secrets.AZURE_CLIENT_ID }}
-              password: ${{ secrets.AZURE_CLIENT_SECRET }}
+#           - name: Login to ACR
+#             uses: docker/login-action@v3
+#             with:
+#               registry: luisrg3citperuacr001.azurecr.io
+#               username: ${{ secrets.AZURE_CLIENT_ID }}
+#               password: ${{ secrets.AZURE_CLIENT_SECRET }}
 
-          - name: Docker Build and Push
-            uses: docker/build-push-action@v4
-            with:
-              context: .
-              push: true
-              tags: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
-              cache-from: type=registry,ref=luisrg3citperuacr001.azurecr.io/sistemasolar:latest
-              cache-to: type=inline
+#           - name: Docker Build and Push
+#             uses: docker/build-push-action@v4
+#             with:
+#               context: .
+#               push: true
+#               tags: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+#               cache-from: type=registry,ref=luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+#               cache-to: type=inline
       
-    dev-deploy:
-        needs: docker
-        environment:
-          name: dev
-          url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
-        outputs:
-          APP_INGRESS_URL: ${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
-        runs-on: ubuntu-latest
-        steps:
-          - name: Checkout Repo
-            uses: actions/checkout@v4
+#     dev-deploy:
+#         needs: docker
+#         environment:
+#           name: dev
+#           url: https://${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
+#         outputs:
+#           APP_INGRESS_URL: ${{ steps.set-ingress-host-address.outputs.APP_INGRESS_HOST }}
+#         runs-on: ubuntu-latest
+#         steps:
+#           - name: Checkout Repo
+#             uses: actions/checkout@v4
 
-          - name: Install kubectl CLI
-            uses: azure/setup-kubectl@v3
-            with:
-              version: 'v1.26.0'
+#           - name: Install kubectl CLI
+#             uses: azure/setup-kubectl@v3
+#             with:
+#               version: 'v1.26.0'
 
-          - name: Azure login
-            uses: azure/login@v2
-            with:
-              creds: ${{ secrets.AZURE_CREDENTIALS }}
+#           - name: Azure login
+#             uses: azure/login@v2
+#             with:
+#               creds: ${{ secrets.AZURE_CREDENTIALS }}
 
-          - name: Set AKS context
-            uses: azure/aks-set-context@v4
-            with:
-              resource-group: rgimgcontainer
-              cluster-name: AKS1-APP             
+#           - name: Set AKS context
+#             uses: azure/aks-set-context@v4
+#             with:
+#               resource-group: rgimgcontainer
+#               cluster-name: AKS1-APP             
 
-          - name: Informacion de Cluster Detalles
-            run: |
-              kubectl version --short
-              echo "--------------------------------------"
-              kubectl get nodes
+#           - name: Informacion de Cluster Detalles
+#             run: |
+#               kubectl version --short
+#               echo "--------------------------------------"
+#               kubectl get nodes
 
-          - name: Get Ingress IP
-            id: ingress
-            run: |
-              INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "192.168.1.100")
-              echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
-              echo "Using INGRESS_IP: $INGRESS_IP"
+#           - name: Get Ingress IP
+#             id: ingress
+#             run: |
+#               INGRESS_IP=$(kubectl get svc -n ingress-nginx ingress-nginx-controller -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || echo "192.168.1.100")
+#               echo "INGRESS_IP=$INGRESS_IP" >> $GITHUB_ENV
+#               echo "Using INGRESS_IP: $INGRESS_IP"
 
-          - name: Replace tokens in manifest files
-            uses: cschleiden/replace-tokens@v1
-            with:
-              tokenPrefix: '_{_'
-              tokenSuffix: '_}_'
-              files: '["kubernetes/development/*.yaml"]'
-            env:
-              NAMESPACE: ${{ vars.NAMESPACE }}
-              REPLICAS: ${{ vars.REPLICAS }}
-              IMAGE: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
-              INGRESS_IP: ${{ env.INGRESS_IP }}
+#           - name: Replace tokens in manifest files
+#             uses: cschleiden/replace-tokens@v1
+#             with:
+#               tokenPrefix: '_{_'
+#               tokenSuffix: '_}_'
+#               files: '["kubernetes/development/*.yaml"]'
+#             env:
+#               NAMESPACE: ${{ vars.NAMESPACE }}
+#               REPLICAS: ${{ vars.REPLICAS }}
+#               IMAGE: luisrg3citperuacr001.azurecr.io/sistemasolar:latest
+#               INGRESS_IP: ${{ env.INGRESS_IP }}
           
-          - name: Create or Update Namespace
-            run: |
-              kubectl create namespace ${{ vars.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
+#           - name: Create or Update Namespace
+#             run: |
+#               kubectl create namespace ${{ vars.NAMESPACE }} --dry-run=client -o yaml | kubectl apply -f -
 
-          - name: Create Mongo Secret
-            run: |
-              kubectl -n ${{ vars.NAMESPACE }} create secret generic mongo-db-creds \
-                --from-literal=MONGO_URI="mongodb+srv://luiseduardo:${{ secrets.MONGO_PASSWORD }}@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" \
-                --from-literal=MONGO_USERNAME=luiseduardo \
-                --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
-                --dry-run=client -o yaml | kubectl apply -f -
+#           - name: Create Mongo Secret
+#             run: |
+#               kubectl -n ${{ vars.NAMESPACE }} create secret generic mongo-db-creds \
+#                 --from-literal=MONGO_URI="mongodb+srv://luiseduardo:${{ secrets.MONGO_PASSWORD }}@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0" \
+#                 --from-literal=MONGO_USERNAME=luiseduardo \
+#                 --from-literal=MONGO_PASSWORD=${{ secrets.MONGO_PASSWORD }} \
+#                 --dry-run=client -o yaml | kubectl apply -f -
 
-          - name: Check Manifest Files
-            run: |
-              echo "=== Checking manifest files ==="
-              ls -la kubernetes/development/
-              cat kubernetes/development/*.yaml
+#           - name: Check Manifest Files
+#             run: |
+#               echo "=== Checking manifest files ==="
+#               ls -la kubernetes/development/
+#               cat kubernetes/development/*.yaml
              
-          - name: Deploy to AKS
-            run: |
-              kubectl apply -f kubernetes/development/ -n ${{ vars.NAMESPACE }}
+#           - name: Deploy to AKS
+#             run: |
+#               kubectl apply -f kubernetes/development/ -n ${{ vars.NAMESPACE }}
 
-          - name: Verify Deployment
-            run: |
-              echo "=== Deployment status ==="
-              kubectl get deployments -n ${{ vars.NAMESPACE }}
-              echo "=== Pods status ==="
-              kubectl get pods -n ${{ vars.NAMESPACE }}
-              echo "=== Services status ==="
-              kubectl get services -n ${{ vars.NAMESPACE }}
+#           - name: Verify Deployment
+#             run: |
+#               echo "=== Deployment status ==="
+#               kubectl get deployments -n ${{ vars.NAMESPACE }}
+#               echo "=== Pods status ==="
+#               kubectl get pods -n ${{ vars.NAMESPACE }}
+#               echo "=== Services status ==="
+#               kubectl get services -n ${{ vars.NAMESPACE }}
 
-          - name: Set app ingress host URL
-            id: set-ingress-host-address
-            run: |
-             APP_INGRESS_HOST=$(kubectl -n ${{ vars.NAMESPACE }} get ingress -o jsonpath='{.items[0].spec.tls[0].hosts[0]}')
-             echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
-             echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
+#           - name: Set app ingress host URL
+#             id: set-ingress-host-address
+#             run: |
+#              APP_INGRESS_HOST=$(kubectl -n ${{ vars.NAMESPACE }} get ingress -o jsonpath='{.items[0].spec.tls[0].hosts[0]}')
+#              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
+#              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
-    dev-integracion-testing:
-        name: Dev Integration Testing
-        needs: dev-deploy
-        runs-on: ubuntu-latest
-        steps:
-          - name: Simple connectivity test
-            env:
-              URL: ${{ needs.dev-deploy.outputs.APP_INGRESS_URL}}
-            run: |
-              echo "Verifying if URL is accessible: $URL"
-              curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
+#     dev-integracion-testing:
+#         name: Dev Integration Testing
+#         needs: dev-deploy
+#         runs-on: ubuntu-latest
+#         steps:
+#           - name: Simple connectivity test
+#             env:
+#               URL: ${{ needs.dev-deploy.outputs.APP_INGRESS_URL}}
+#             run: |
+#               echo "Verifying if URL is accessible: $URL"
+#               curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
