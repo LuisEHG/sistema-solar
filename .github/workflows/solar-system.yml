@@ -164,7 +164,7 @@ jobs:
               ls -la kubernetes/development/
               cat kubernetes/development/*.yaml
              
-          - name: Deploy to AKS
+          - name: Deploy to AKS 
             run: |
               kubectl apply -f kubernetes/development/ -n ${{ vars.NAMESPACE }}
 
@@ -269,7 +269,7 @@ jobs:
               ls -la kubernetes/production/
               cat kubernetes/production/*.yaml
              
-          - name: Deploy to AKS Prodution
+          - name: Deploy to AKS Prodution 2
             run: |
               kubectl apply -f kubernetes/production/ -n ${{ vars.NAMESPACE }}
 
