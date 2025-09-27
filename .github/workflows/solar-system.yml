@@ -13,54 +13,36 @@ env:
   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
 
 jobs:
-  unit-testing:
-    strategy:
-      matrix:
-        nodejs_version: [18, 20]
-        operating_system: [ubuntu-latest]
-        exclude:
-          - nodejs_version: 18
-            operating_system: macos-latest
+    unit-testing:
+        name: Pruebas Unitarias
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout Repository
+          uses: actions/checkout@v4
 
-    name: Unit Testing
-    runs-on: ${{ matrix.operating_system }}
+        - name: Setup NodeJS Version
+          uses: actions/setup-node@v4
+          with:
+            node-version: 18
+        - name: Cache NPM dependencias
+          uses: actions/cache@v3
+          with:
+            path: node_modules
+            key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json')}}
+
+        - name: Install Dependencies
+          run: npm install
     
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v5
-      
-      - name: Set dynamic MONGO_URI
-        run: echo "'mongodb+srv://luiseduardo:G3n3rica@cluster0.hrpaoxp.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0'" >> $GITHUB_ENV
-      
-      - name: Setup NodeJS Version - ${{ matrix.nodejs_version }}
-        uses: actions/setup-node@v5
-        with: 
-          node-version: ${{ matrix.nodejs_version }}
+        - name: Unit Testing
+          run: npm test
+        
+        - name: Archive Test Result
+          uses: actions/upload-artifact@v4
+          with:
+            name: Mocha-Test-Result
+            path: test-results.xml
 
-      - name: Cache NPM dependencies
-        uses: actions/cache@v4
-        with:
-          path: node_modules
-          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
-
-      - name: Install all Dependencies
-        run: npm install
-
-      - name: Seed database
-        run: npm run seed
-      
-      - name: Unit Testing
-        id: nodejs-unit-testing-step
-        run: npm test 
-      
-      - name: Archive Test Result
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: Mocha-Test-Result-${{ github.job }}-${{ matrix.nodejs_version }}-${{ matrix.operating_system }}-${{ github.run_number }}
-          path: test-results.xml
-
-  code-coverage:
+    code-coverage:
         name: Code Coverage
         runs-on: ubuntu-latest
         steps:
@@ -86,7 +68,7 @@ jobs:
             path: coverage
             retention-days: 5
 
-  docker:
+    docker:
         name: Container
         needs: [unit-testing, code-coverage]
         runs-on: ubuntu-latest
@@ -110,7 +92,7 @@ jobs:
               cache-from: type=registry,ref=luisrg3citperuacr001.azurecr.io/sistemasolar:latest
               cache-to: type=inline
       
-  dev-deploy:
+    dev-deploy:
         if: contains(github.ref, 'feature/') 
         needs: docker
         environment:
@@ -202,7 +184,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
-  dev-integracion-testing:
+    dev-integracion-testing:
         if: contains(github.ref, 'feature/') 
         name: Dev Integration Testing
         needs: dev-deploy
@@ -215,7 +197,7 @@ jobs:
               echo "Verifying if URL is accessible: $URL"
               curl --max-time 10 -I https://$URL/ || echo "URL accessible - check ingress configuration"
     
-  prod-deploy:
+    prod-deploy:
         if: github.ref == 'refs/heads/master' 
         needs: docker
         environment:
@@ -307,7 +289,7 @@ jobs:
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_ENV
              echo "APP_INGRESS_HOST=$APP_INGRESS_HOST" >> $GITHUB_OUTPUT
 
-  prod-integracion-testing:
+    prod-integracion-testing:
         if: github.ref == 'refs/heads/master'
         name: Prod Integration Testing
         needs: prod-deploy
