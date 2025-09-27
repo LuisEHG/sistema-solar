@@ -13,13 +13,13 @@ env:
   MONGO_PASSWORD: ${{ secrets.MONGO_PASSWORD }}
 
 jobs:
-    unit-testing:
-      services:
-       mongo-db:
-         image: mongo:6.0
-         ports:
+  unit-testing:
+    services:
+      mongo-db:
+        image: mongo:6.0
+        ports:
           - 27017:27017
-         env:
+        env:
           MONGO_INITDB_ROOT_USERNAME: non-prod-user
           MONGO_INITDB_ROOT_PASSWORD: non-prod-password
         options: >-
@@ -27,10 +27,12 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+    
     env:
       MONGO_USERNAME: non-prod-user
       MONGO_PASSWORD: non-prod-password
       #MONGO_URI: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@localhost:27017/solar_system?authSource=admin
+    
     strategy:
       matrix:
         nodejs_version: [18, 20]
@@ -40,7 +42,8 @@ jobs:
             operating_system: macos-latest
 
     name: Unit Testing
-    runs-on: ${{matrix.operating_system}}
+    runs-on: ${{ matrix.operating_system }}
+    
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v5
@@ -48,18 +51,17 @@ jobs:
       - name: Set dynamic MONGO_URI
         run: echo "MONGO_URI=mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@localhost:27017/solar_system?authSource=admin" >> $GITHUB_ENV
       
-      - name: Setup NodeJS Version - ${{matrix.nodejs_version}}
+      - name: Setup NodeJS Version - ${{ matrix.nodejs_version }}
         uses: actions/setup-node@v5
         with: 
-          node-version: ${{matrix.nodejs_version}}
+          node-version: ${{ matrix.nodejs_version }}
 
       - name: Cache NPM dependencies
         uses: actions/cache@v4
         with:
           path: node_modules
-          key: ${{runner.os}}-node-modules-${{hashFiles('package-lock.json')}}
+          key: ${{ runner.os }}-node-modules-${{ hashFiles('package-lock.json') }}
 
-  
       - name: Install all Dependencies
         run: npm install
 
@@ -69,8 +71,9 @@ jobs:
       - name: Unit Testing
         id: nodejs-unit-testing-step
         run: npm test 
+      
       - name: Archive Test Result
-        if : always()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Mocha-Test-Result-${{ github.job }}-${{ matrix.nodejs_version }}-${{ matrix.operating_system }}-${{ github.run_number }}
