@@ -102,17 +102,18 @@ jobs:
         run: echo "IMAGE_REF=${{ needs.setup.outputs.IMAGE_REF }}" >> $GITHUB_OUTPUT
 
   security_scan:
-    needs: build_and_push
-    runs-on: ubuntu-latest
-    # Este job llama a la composite action security-scan definida en el repo (ver sección 2)
-    steps:
+     needs: build_and_push
+     runs-on: ubuntu-latest
+     steps:
       - uses: actions/checkout@v4
+
       - name: Run org/security scan (componente reusable)
         uses: ./.github/actions/security-scan
         with:
-          image-ref: ${{ needs.setup.outputs.IMAGE_REF }}
+          image-ref: ${{ needs.setup.outputs.image_ref }}
           target-url: ${{ inputs.target-url || '' }}   # opcional para DAST
-        # proporciona secrets desde el workflow consumidor
+        env:
+          AZURE_CREDENTIALS: ${{ secrets.AZURE_CREDENTIALS }}
 
   update_manifests_and_argocd:
     needs: [build_and_push, security_scan]
