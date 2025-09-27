@@ -291,6 +291,7 @@ jobs:
 
     prod-integration-testing:
         name: Prod Integration Testing
+        if: github.ref == 'refs/heads/master'
         needs: prod-deploy
         runs-on: ubuntu-latest
         steps:
