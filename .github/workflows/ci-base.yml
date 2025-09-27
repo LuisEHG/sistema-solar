@@ -119,32 +119,34 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ inputs.deploy-via-argocd == true }}
     steps:
-      - name: Checkout manifests repo
-        uses: actions/checkout@v4
-        with:
-          repository: ${{ inputs.manifests-repo }}
-          token: ${{ secrets.MANIFESTS_REPO_TOKEN }}
-          path: manifests
+    - name: Checkout manifests repo
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.manifests-repo }}
+        token: ${{ secrets.MANIFESTS_REPO_TOKEN }}
+        path: manifests
 
-      - name: Replace image tag in manifests
-        run: |
-          find manifests/${{ inputs.manifests-path }} -type f -name "*.yaml" -exec sed -i "s|REPLACE_IMAGE_TAG|${{ needs.setup.outputs.IMAGE_REF }}|g" {} \;
-          cd manifests
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
-          git add .
-          if git diff --staged --quiet; then
-            echo "No changes to commit"
-          else
-            git commit -m "ci: update image to ${{ needs.setup.outputs.IMAGE_REF }}"
-            git push origin HEAD:main
-          fi
+    - name: Replace image tag in manifests
+      run: |
+        find manifests/${{ inputs.manifests-path }} -type f -name "*.yaml" -exec sed -i "s|REPLACE_IMAGE_TAG|${{ needs.setup.outputs.IMAGE_REF }}|g" {} \;
+        cd manifests
+        git config user.name "github-actions"
+        git config user.email "actions@github.com"
+        git add .
+        if git diff --staged --quiet; then
+          echo "No changes to commit"
+        else
+          git commit -m "ci: update image to ${{ needs.setup.outputs.IMAGE_REF }}"
+          git push origin HEAD:main
+        fi
 
-      - name: ArgoCD sync (optional)
-        if: ${{ secrets.ARGOCD_SERVER != '' && secrets.ARGOCD_USERNAME != '' && secrets.ARGOCD_PASSWORD != '' }}
-        run: |
-          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-          chmod +x /usr/local/bin/argocd
-          argocd login ${{ secrets.ARGOCD_SERVER }} --username ${{ secrets.ARGOCD_USERNAME }} --password ${{ secrets.ARGOCD_PASSWORD }} --insecure
-          argocd app sync sistemasolar --grpc-web
-          argocd app wait sistemasolar --timeout 300 --health
+    - name: ArgoCD sync
+      run: |
+        curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+        chmod +x /usr/local/bin/argocd
+        argocd login ${{ secrets.ARGOCD_SERVER }} \
+          --username ${{ secrets.ARGOCD_USERNAME }} \
+          --password ${{ secrets.ARGOCD_PASSWORD }} \
+          --insecure
+        argocd app sync sistemasolar --grpc-web
+        argocd app wait sistemasolar --timeout 300 --health
